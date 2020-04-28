@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef, ReactElement } from 'react';
 import Table from './table';
-import { Input } from 'antd'
+import { Input, Select } from 'antd'
 
 import './App.css';
+import Button from 'antd/es/button';
 
 const datasource = [
     {
@@ -46,14 +47,25 @@ function App() {
     {
       title:'年龄',
       dataIndex: 'age',
-      
       sorterKey: 'age',
-      editable: true,
-      editDom: <Input />
+      editData: {
+        dom: (setValues: Function): ReactElement => {
+          return <Input onChange={(e) => {setValues(e.target.value)}} />
+        }
+      },
     },
     {
       title:'姓别',
       dataIndex: 'sex',
+      editData: {
+        key: 'sexx',
+        dom: (setValues: Function): ReactElement => {
+          return <Select onChange={(value) => {setValues(value)}} style={{width: 150}}> 
+                    <Select.Option value={0}>男</Select.Option> 
+                    <Select.Option value={1}>女</Select.Option> 
+                </Select>
+        }
+      },
       filters: {
         key: 'sex',
         mode: 'radio',
@@ -65,15 +77,32 @@ function App() {
       dataIndex: 'sex1',
       filters: {
         key: 'sex1',
+      },
+      render: (value:any,record:any,fn:any) => {
+        console.log(fn);
+        return <Button onClick={() => {
+          console.log(fn());
+        }} size="small">确定</Button>
       }
     },
   ]
 
+  const table:any = useRef()
+
+
+  function getEditDatas() {
+    console.log(table.current.getEditData);
+  }
+
   return (
     <div className="App">
+      <div>
+        <Button onClick={getEditDatas}>GET</Button>
+      </div>
         <Table 
           columns={columns}
           dataSource={datasource}
+          ref={table}
         />
     </div>
   );

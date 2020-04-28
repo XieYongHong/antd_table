@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import React, { useState, useEffect, ReactElement } from 'react'
+import React, { useState, useEffect, forwardRef, useImperativeHandle, ReactElement } from 'react'
 import Table, { TableProps, ColumnProps } from 'antd/es/table'
 import { Radio, Button, Input, Checkbox } from 'antd'
 import {FilterOutlined} from '@ant-design/icons'
@@ -16,9 +16,10 @@ interface MyColumns<T> extends ColumnProps<T> {
     sorterKey?: string
     editable?: boolean,
     editData?: {
-        dom: ReactElement,
-        [key:string]: any
-    }
+        dom: (setValues:Function) => ReactElement,
+        key?: string,
+    },
+    render?: (value: any, record: any, editData: any) => any
 }
 
 interface filtersProps {
@@ -34,7 +35,7 @@ interface FilterDomProps {
     value: any
 }
 
-function table<T>(props: MyTabelProps<T>):ReactElement {
+function table<T>(props: MyTabelProps<T>, ref: any):ReactElement {
 
     const [columns, setColumns] = useState<MyColumns<any>[]>([])
 
@@ -45,6 +46,8 @@ function table<T>(props: MyTabelProps<T>):ReactElement {
 
     const [queryFilterArgs, setQueryFilterArgs] = useState<any>(null)
 
+    const [editDataList,setEditDataList] = useState<any[]>([])
+
     useEffect(() => {
 
     }, [])
@@ -52,11 +55,46 @@ function table<T>(props: MyTabelProps<T>):ReactElement {
     useEffect(() => {
         setDefaultColums(props.columns)
     }, [props.columns])
+
+    useImperativeHandle(ref, () => ({
+        getEditData: editDataList
+    }))
     
     function handleColumns (data:Array<MyColumns<any>> = []): MyColumns<any>[] { // 处理columns
         return data.map( (item: MyColumns<any>) => {
             item.key = item.dataIndex
-            const { filters, sorterKey, ...extra} = item
+            const { filters, sorterKey, editData, render, ...extra} = item
+
+            item.render = (value,record) => {
+                const key = record.key
+                const obj = editDataList.find((a: any) => a.key === key)
+                if(editData) {
+                    const name = editData.key || item.key
+    
+                    const setValues = (value:any) => {
+                        if(obj) {
+                            obj[name] = value
+                            setEditDataList(editDataList)
+                        } else {
+                            setEditDataList([
+                                ...editDataList,
+                                {
+                                    key: key,
+                                    [name]: value
+                                }
+                            ])
+                        }
+    
+                        console.log(editDataList);
+    
+                    }
+    
+                    const dom = editData.dom ? editData.dom(setValues) : value
+                    
+                    return dom
+                }
+            }
+
             if(filters && JSON.stringify(filters) !== '{}') { // 返回过滤
                 return {
                     ...extra,
@@ -75,6 +113,8 @@ function table<T>(props: MyTabelProps<T>):ReactElement {
                     sorter: true
                 }
             }
+            
+
             return item
         })
     }
@@ -173,15 +213,14 @@ function table<T>(props: MyTabelProps<T>):ReactElement {
 
     return (
         <div className='concrete-table'>
-            <div>
-                <Button onClick={cleanFilterAndOrder}>重置</Button>
-            </div>
             <Table 
                 columns={handleColumns(defaultColums)}
-                dataSource={props.dataSource}
+                dataSource={props.dataSource?.map((item: any,index: number) => ({
+                    key: item.id || index,
+                    ...item,
+                }))}
                 onChange={(pagination, filters, sorter) => {
-                    console.log(filters)
-                    console.log(sorter)
+                    setEditDataList([])
                     setSortedInfo(sorter)
                 }}
             />
@@ -189,4 +228,4 @@ function table<T>(props: MyTabelProps<T>):ReactElement {
     )
 }
 
-export default table
+export default forwardRef(table)
